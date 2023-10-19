@@ -132,15 +132,6 @@ naive_df = data.frame(type = "naive",
 
 #subsampling the data according to y
 
-#whats the 10% quartile of the number of data points per y value
-y_25 <- grid_df_mar_sampled %>%
-  group_by(y) %>%
-  summarise(y_nu = length(y)) %>%
-  ungroup() %>%
-  summarise(y_25 = round(quantile(y_nu, 0.25))) %>%
-  pull() %>%
-  as.numeric()
-
 #ideally we want at least 1 data points for each y value - not fully possible
 
 subsample_fun <- function(grid_df_mar_sampled){
