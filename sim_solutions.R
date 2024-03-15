@@ -42,7 +42,7 @@ grid_df <- truth_df %>%
               filter(nu == sim_nu)
   
 # sampling and abundance affected by y
-grid_df_mar <- getMAR(grid_df, intercept = -1, beta.x = 0, beta.y = 4, 
+grid_df_mar <- getMAR(grid_df, intercept = 0.2, beta.x = 0, beta.y = 2, 
                       size = round(nrow(grid_df) * sim_sample_prop))
 
 #proxy correlation if we are using an imperfect variable
@@ -78,8 +78,8 @@ all_results_summary <- all_results %>%
             ci_mean = median(ci_width)) %>%
   ungroup() %>%
   filter(type!="true") %>%
-  filter(type!="weighted") %>%
-  mutate(type = factor(type, levels=c("naive","subsampled","svyglm","poststratified","imputed")))
+  filter(type!="svyglm") %>% # same as weighted
+  mutate(type = factor(type, levels=c("naive","subsampled","weighted","poststratified","imputed")))
 
 # all facets - mean  --------------------------------------------------------
 
@@ -95,7 +95,7 @@ all_results_summary %>%
 # all facets - uncertainty -------------------------------------------------
 
 all_results_summary %>%
-  ggplot(aes(x = sample_prop, y = ci_mean,colour = type)) +
+  ggplot(aes(x = sample_prop, y = ci_mean, colour = type)) +
   geom_point() +
   geom_line() +
   theme_bw() +
@@ -106,7 +106,7 @@ all_results_summary %>%
 # simple plots -----------------------------------------------------------------------
 
 all_results_summary$type <- as.character(all_results_summary$type)
-all_results_summary$type[all_results_summary$type=="svyglm"] <- "weighted glm"
+all_results_summary$type[all_results_summary$type=="weighted"] <- "weighted glm"
 all_results_summary$type <- factor(all_results_summary$type,
                                    levels=c("naive","subsampled","weighted glm",
                                             "poststratified","imputed"))
@@ -115,19 +115,52 @@ g1 <- all_results_summary %>%
   ggplot(aes(x = sample_prop, y = mean, colour = type)) +
   geom_point() +
   geom_line() +
-  theme_bw() +
-  ylab("Bias") +
+  scale_color_brewer("Model",palette= "Set2")+
+  theme_classic() +
+  ylab("Bias (deviation from truth)") +
   xlab("Sampled fraction")
 
 g2 <- all_results_summary %>%
-  filter(sample_prop>0.7 & sample_prop<0.8) %>%
+  filter(sample_prop>0.3 & sample_prop<0.4) %>%
   ggplot(aes(x = proxy_corr, y = mean, colour = type)) +
   geom_point() +
   geom_line() +
-  theme_bw() +
-  ylab("Bias") +
+  scale_color_brewer("Model",palette= "Set2")+
+  theme_classic() +
+  ylab("Bias (deviation from truth)") +
   xlab("Covariate knowledge (correlation with truth)")
 
-cowplot::plot_grid(g1,g2, labels=c("A","B"), nrow=2)
+meanPlot <- cowplot::plot_grid(g1,g2, labels=c("A","C"), nrow=2)
 
+# uncertainty -----------------------------------------------------------------------
+
+g1 <- all_results_summary %>%
+  filter(proxy_corr>0.7 & proxy_corr<0.8) %>%
+  ggplot(aes(x = sample_prop, y = ci_mean, colour = type)) +
+  geom_point() +
+  geom_line() +
+  scale_color_brewer("Model",palette= "Set2")+
+  theme_classic() +
+  ylab("Uncertainty (CI width)") +
+  xlab("Sampled fraction")
+
+g2 <- all_results_summary %>%
+  filter(sample_prop>0.3 & sample_prop<0.4) %>%
+  ggplot(aes(x = proxy_corr, y = ci_mean, colour = type)) +
+  geom_point() +
+  geom_line() +
+  scale_color_brewer("Model",palette= "Set2")+
+  theme_classic() +
+  ylab("Uncertainty (CI width)") +
+  xlab("Covariate knowledge (correlation with truth)")
+
+ciPlot <- cowplot::plot_grid(g1,g2, labels=c("B","D"), nrow=2)
+
+# combining -------------------------------------------------------
+
+cowplot::plot_grid(meanPlot,
+                   ciPlot,
+                   ncol = 2)
+
+ggsave("plots/Fig.5.png",width = 11, height = 6)
 # end --------------------------------------------------------------------------
